@@ -7,7 +7,7 @@ import { OfficeScene } from './scenes/OfficeScene.js';
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  backgroundColor: '#1a1a2e',
+  backgroundColor: '#0f0f1e',
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -10,9 +10,17 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #1a1a2e;
-  font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
-  color: #eee;
+  background: #0f0f1e;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  color: #eef0f6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(100, 140, 255, 0.35);
+  color: #fff;
 }
 
 #game-container {
@@ -25,4 +33,10 @@ html, body {
   display: block;
   width: 100% !important;
   height: 100% !important;
+  image-rendering: auto;
 }
+
+/* Styled scrollbar for chat */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(120, 150, 255, 0.3); border-radius: 4px; }

@@ -128,14 +128,14 @@ export class OfficeScene extends Phaser.Scene {
     const cols = this._gridCols;
     const rows = this._gridRows;
 
-    // ── Floor tiles ──────────────────────────────────────────────────────────
+    // ── Floor tiles (polished stone aesthetic) ───────────────────────────────
     for (let ix = 0; ix < cols; ix++) {
       for (let iy = 0; iy < rows; iy++) {
         const { x, y } = this._iso.toScreen(ix, iy, 0);
         const checker = (ix + iy) % 2 === 0;
-        const tileTop = checker ? 0xE8E8F8 : 0xD8D8EE;
-        const tileLeft = checker ? 0xC0C0D8 : 0xB8B8CC;
-        const tileRight = checker ? 0xB0B0C8 : 0xA8A8BC;
+        const tileTop = checker ? 0xE0E4F0 : 0xCDD2E4;
+        const tileLeft = checker ? 0xB0B8D0 : 0xA4ACC4;
+        const tileRight = checker ? 0xA0A8C0 : 0x949CB8;
 
         // Top face
         g.fillStyle(tileTop, 1);
@@ -147,8 +147,16 @@ export class OfficeScene extends Phaser.Scene {
         g.closePath();
         g.fillPath();
 
-        // Tile border
-        g.lineStyle(0.5, 0x9999AA, 0.3);
+        // Subtle highlight on top-left edge
+        g.lineStyle(0.5, 0xFFFFFF, checker ? 0.12 : 0.06);
+        g.beginPath();
+        g.moveTo(x - tileW / 2, y + tileH / 2);
+        g.lineTo(x, y);
+        g.lineTo(x + tileW / 2, y + tileH / 2);
+        g.strokePath();
+
+        // Tile border (soft)
+        g.lineStyle(0.5, 0x8090AA, 0.15);
         g.beginPath();
         g.moveTo(x, y);
         g.lineTo(x + tileW / 2, y + tileH / 2);
@@ -157,9 +165,10 @@ export class OfficeScene extends Phaser.Scene {
         g.closePath();
         g.strokePath();
 
-        // ── Left wall (iy === 0) ─────────────────────────────────────────
+        // ── Left wall (iy === 0) with gradient lighting ──────────────────
         if (iy === 0) {
           const wallH = 96;
+          // Darker base
           g.fillStyle(tileLeft, 1);
           g.beginPath();
           g.moveTo(x - tileW / 2, y + tileH / 2);
@@ -168,11 +177,30 @@ export class OfficeScene extends Phaser.Scene {
           g.lineTo(x - tileW / 2, y + tileH / 2 - wallH);
           g.closePath();
           g.fillPath();
-          g.lineStyle(0.5, 0x9999AA, 0.2);
+          // Light gradient overlay (simulates overhead light)
+          const lightAlpha = 0.04 + (ix / cols) * 0.06;
+          g.fillStyle(0xFFFFFF, lightAlpha);
+          g.beginPath();
+          g.moveTo(x - tileW / 2, y + tileH / 2);
+          g.lineTo(x, y);
+          g.lineTo(x, y - wallH);
+          g.lineTo(x - tileW / 2, y + tileH / 2 - wallH);
+          g.closePath();
+          g.fillPath();
+          g.lineStyle(0.5, 0x8090AA, 0.12);
           g.strokePath();
+          // Baseboard
+          g.fillStyle(0x8890A8, 0.3);
+          g.beginPath();
+          g.moveTo(x - tileW / 2, y + tileH / 2);
+          g.lineTo(x, y);
+          g.lineTo(x, y - 4);
+          g.lineTo(x - tileW / 2, y + tileH / 2 - 4);
+          g.closePath();
+          g.fillPath();
         }
 
-        // ── Right wall (ix === 0) ────────────────────────────────────────
+        // ── Right wall (ix === 0) with gradient lighting ─────────────────
         if (ix === 0) {
           const wallH = 96;
           g.fillStyle(tileRight, 1);
@@ -183,8 +211,27 @@ export class OfficeScene extends Phaser.Scene {
           g.lineTo(x - tileW / 2, y + tileH / 2 - wallH);
           g.closePath();
           g.fillPath();
-          g.lineStyle(0.5, 0x9999AA, 0.2);
+          // Lighting overlay
+          const lightAlpha = 0.03 + (iy / rows) * 0.05;
+          g.fillStyle(0xFFFFFF, lightAlpha);
+          g.beginPath();
+          g.moveTo(x - tileW / 2, y + tileH / 2);
+          g.lineTo(x, y + tileH);
+          g.lineTo(x, y + tileH - wallH);
+          g.lineTo(x - tileW / 2, y + tileH / 2 - wallH);
+          g.closePath();
+          g.fillPath();
+          g.lineStyle(0.5, 0x8090AA, 0.12);
           g.strokePath();
+          // Baseboard
+          g.fillStyle(0x8890A8, 0.3);
+          g.beginPath();
+          g.moveTo(x - tileW / 2, y + tileH / 2);
+          g.lineTo(x, y + tileH);
+          g.lineTo(x, y + tileH - 4);
+          g.lineTo(x - tileW / 2, y + tileH / 2 - 4);
+          g.closePath();
+          g.fillPath();
         }
       }
     }
@@ -193,14 +240,16 @@ export class OfficeScene extends Phaser.Scene {
     this._drawCeilingTrim(g, cols, rows);
     // ── Window ───────────────────────────────────────────────────────────────
     this._drawWindow(g);
+    // ── Ambient light pool on floor ──────────────────────────────────────────
+    this._drawAmbientLight(g);
   }
 
   _drawCeilingTrim(g, cols, rows) {
     const { tileW, tileH } = this._iso;
     const wallH = 96;
 
-    // Top wall edge highlight (left wall top)
-    g.lineStyle(2, 0xAABBCC, 0.7);
+    // Crown moulding highlight (left wall top)
+    g.lineStyle(2.5, 0xC8D0E0, 0.6);
     for (let ix = 0; ix < cols; ix++) {
       const { x, y } = this._iso.toScreen(ix, 0, 0);
       g.beginPath();
@@ -208,12 +257,28 @@ export class OfficeScene extends Phaser.Scene {
       g.lineTo(x + tileW / 2, y + tileH / 2 - wallH);
       g.strokePath();
     }
-    // Right wall top
+    // Right wall crown moulding
     for (let iy = 0; iy < rows; iy++) {
       const { x, y } = this._iso.toScreen(0, iy, 0);
       g.beginPath();
       g.moveTo(x, y - wallH);
       g.lineTo(x, y + tileH - wallH);
+      g.strokePath();
+    }
+    // Secondary trim line (shadow below moulding)
+    g.lineStyle(1, 0x8090AA, 0.25);
+    for (let ix = 0; ix < cols; ix++) {
+      const { x, y } = this._iso.toScreen(ix, 0, 0);
+      g.beginPath();
+      g.moveTo(x, y - wallH + 4);
+      g.lineTo(x + tileW / 2, y + tileH / 2 - wallH + 4);
+      g.strokePath();
+    }
+    for (let iy = 0; iy < rows; iy++) {
+      const { x, y } = this._iso.toScreen(0, iy, 0);
+      g.beginPath();
+      g.moveTo(x, y - wallH + 4);
+      g.lineTo(x, y + tileH - wallH + 4);
       g.strokePath();
     }
   }
@@ -222,29 +287,42 @@ export class OfficeScene extends Phaser.Scene {
     // A window on the back-left wall around tile (5,0)
     const { x, y } = this._iso.toScreen(5, 0, 0);
     const wallH = 96;
-    const winX = x + 4;
-    const winY = y - wallH + 16;
-    const winW = 36;
-    const winH = 50;
+    const winX = x + 2;
+    const winY = y - wallH + 12;
+    const winW = 40;
+    const winH = 56;
 
-    // Sky fill
-    g.fillStyle(0x88CCFF, 0.6);
+    // Window recess shadow
+    g.fillStyle(0x000000, 0.08);
+    g.fillRect(winX - 2, winY - 2, winW + 4, winH + 4);
+
+    // Sky gradient fill
+    g.fillGradientStyle(0x6ABAEE, 0x6ABAEE, 0xABDDFF, 0xABDDFF, 1);
     g.fillRect(winX, winY, winW, winH);
 
-    // Sun
-    g.fillStyle(0xFFEE88, 0.9);
-    g.fillCircle(winX + winW - 8, winY + 10, 7);
+    // Sun with glow
+    g.fillStyle(0xFFDD66, 0.2);
+    g.fillCircle(winX + winW - 8, winY + 12, 14);
+    g.fillStyle(0xFFEE88, 0.6);
+    g.fillCircle(winX + winW - 8, winY + 12, 8);
+    g.fillStyle(0xFFF8CC, 0.95);
+    g.fillCircle(winX + winW - 8, winY + 12, 5);
 
-    // Clouds
-    g.fillStyle(0xFFFFFF, 0.7);
-    g.fillEllipse(winX + 6, winY + 8, 16, 8);
-    g.fillEllipse(winX + 12, winY + 6, 16, 8);
+    // Clouds (more detail)
+    g.fillStyle(0xFFFFFF, 0.75);
+    g.fillEllipse(winX + 8, winY + 10, 18, 8);
+    g.fillEllipse(winX + 15, winY + 8, 16, 8);
+    g.fillEllipse(winX + 11, winY + 12, 14, 6);
+    // Second cloud
+    g.fillStyle(0xFFFFFF, 0.5);
+    g.fillEllipse(winX + 24, winY + 32, 14, 6);
+    g.fillEllipse(winX + 28, winY + 30, 12, 6);
 
-    // Frame
-    g.lineStyle(2, 0x8B6914, 0.9);
+    // Window frame (wood grain brown)
+    g.lineStyle(3, 0x7A5A28, 0.95);
     g.strokeRect(winX, winY, winW, winH);
     // Cross bar
-    g.lineStyle(1.5, 0x8B6914, 0.7);
+    g.lineStyle(2, 0x7A5A28, 0.85);
     g.beginPath();
     g.moveTo(winX + winW / 2, winY);
     g.lineTo(winX + winW / 2, winY + winH);
@@ -253,6 +331,25 @@ export class OfficeScene extends Phaser.Scene {
     g.moveTo(winX, winY + winH / 2);
     g.lineTo(winX + winW, winY + winH / 2);
     g.strokePath();
+    // Inner frame highlight
+    g.lineStyle(0.5, 0xDDCC99, 0.4);
+    g.strokeRect(winX + 1, winY + 1, winW - 2, winH - 2);
+
+    // Window sill
+    g.fillStyle(0x8A6A30, 0.9);
+    g.fillRect(winX - 3, winY + winH, winW + 6, 4);
+    g.fillStyle(0xBBA050, 0.4);
+    g.fillRect(winX - 3, winY + winH, winW + 6, 1);
+  }
+
+  /** Soft ambient light pool on the floor near the window */
+  _drawAmbientLight(g) {
+    const { x, y } = this._iso.toScreen(5, 2, 0);
+    // Warm light from window
+    g.fillStyle(0xFFEECC, 0.04);
+    g.fillEllipse(x, y, 120, 50);
+    g.fillStyle(0xFFEECC, 0.03);
+    g.fillEllipse(x + 10, y + 10, 80, 35);
   }
 
   // ─── Activity listeners ───────────────────────────────────────────────────
@@ -385,18 +482,24 @@ export class OfficeScene extends Phaser.Scene {
   _buildUI() {
     const { width, height } = this.scale;
 
-    // ── Room info bar ─────────────────────────────────────────────────────
+    // ── Room info bar (frosted glass) ─────────────────────────────────────
     const topBar = this.add.graphics();
-    topBar.fillStyle(0x000000, 0.45);
-    topBar.fillRoundedRect(8, 8, 360, 40, 8);
+    topBar.fillStyle(0x101828, 0.65);
+    topBar.fillRoundedRect(8, 8, 370, 42, 10);
+    topBar.lineStyle(1, 0x3a5080, 0.3);
+    topBar.strokeRoundedRect(8, 8, 370, 42, 10);
+    // Top highlight
+    topBar.fillStyle(0xFFFFFF, 0.04);
+    topBar.fillRoundedRect(9, 9, 368, 20, { tl: 10, tr: 10, bl: 0, br: 0 });
     topBar.setDepth(500);
 
-    this._roomLabel = this.add.text(20, 20, 'Connecting…', {
-      fontSize: '13px', fontFamily: 'Segoe UI, sans-serif', color: '#AACCFF',
+    this._roomLabel = this.add.text(22, 22, 'Connecting…', {
+      fontSize: '13px', fontFamily: 'Segoe UI, sans-serif', color: '#A0C0FF',
+      shadow: { offsetX: 0, offsetY: 1, color: '#00001144', blur: 3, fill: true },
     }).setDepth(501);
 
     // Copy button
-    const copyBtn = this.add.text(332, 20, '📋', {
+    const copyBtn = this.add.text(340, 22, '📋', {
       fontSize: '16px',
     }).setDepth(502).setInteractive({ useHandCursor: true });
     copyBtn.on('pointerdown', () => {
@@ -406,42 +509,63 @@ export class OfficeScene extends Phaser.Scene {
       }
     });
 
-    // ── Activity indicator ────────────────────────────────────────────────
+    // ── Activity indicator (pill shape) ───────────────────────────────────
     const actBar = this.add.graphics();
-    actBar.fillStyle(0x000000, 0.4);
-    actBar.fillRoundedRect(8, 56, 160, 28, 6);
+    actBar.fillStyle(0x101828, 0.6);
+    actBar.fillRoundedRect(8, 58, 170, 30, 8);
+    actBar.lineStyle(1, 0x3a5080, 0.2);
+    actBar.strokeRoundedRect(8, 58, 170, 30, 8);
     actBar.setDepth(500);
 
-    this._actLabel = this.add.text(20, 63, '😴 Idle', {
-      fontSize: '12px', fontFamily: 'Segoe UI, sans-serif', color: '#CCCCCC',
+    this._actLabel = this.add.text(22, 66, '😴 Idle', {
+      fontSize: '12px', fontFamily: 'Segoe UI, sans-serif', color: '#9AABCC',
     }).setDepth(501);
 
-    // ── Chat panel ────────────────────────────────────────────────────────
-    const chatW = 280;
-    const chatH = 160;
-    const chatX = width - chatW - 8;
-    const chatY = height - chatH - 52;
+    // Status dot
+    this._actDot = this.add.graphics().setDepth(501);
+
+    // ── Chat panel (frosted glass) ────────────────────────────────────────
+    const chatW = 300;
+    const chatH = 170;
+    const chatX = width - chatW - 10;
+    const chatY = height - chatH - 56;
 
     const chatBg = this.add.graphics();
-    chatBg.fillStyle(0x000000, 0.5);
-    chatBg.fillRoundedRect(chatX, chatY, chatW, chatH, 8);
+    chatBg.fillStyle(0x101828, 0.6);
+    chatBg.fillRoundedRect(chatX, chatY, chatW, chatH, 10);
+    chatBg.lineStyle(1, 0x3a5080, 0.25);
+    chatBg.strokeRoundedRect(chatX, chatY, chatW, chatH, 10);
+    // Header bar
+    chatBg.fillStyle(0xFFFFFF, 0.03);
+    chatBg.fillRoundedRect(chatX + 1, chatY + 1, chatW - 2, 22, { tl: 10, tr: 10, bl: 0, br: 0 });
     chatBg.setDepth(500);
 
+    // Chat header text
+    this.add.text(chatX + 10, chatY + 4, '💬  Chat', {
+      fontSize: '11px', fontFamily: 'Segoe UI, sans-serif', color: '#7888AA',
+    }).setDepth(501);
+
     this._chatLines = [];
-    this._chatContainer = this.add.container(chatX + 6, chatY + 4).setDepth(501);
+    this._chatContainer = this.add.container(chatX + 8, chatY + 26).setDepth(501);
 
     // Chat input
     const chatInputBg = this.add.graphics();
-    chatInputBg.fillStyle(0x000000, 0.6);
-    chatInputBg.fillRoundedRect(chatX, height - 48, chatW, 38, 8);
+    chatInputBg.fillStyle(0x0a1020, 0.7);
+    chatInputBg.fillRoundedRect(chatX, height - 50, chatW, 40, 10);
+    chatInputBg.lineStyle(1, 0x3a5080, 0.2);
+    chatInputBg.strokeRoundedRect(chatX, height - 50, chatW, 40, 10);
     chatInputBg.setDepth(500);
 
     this._chatInput = this.add.dom(chatX + chatW / 2, height - 30).createFromHTML(
       `<input type="text" id="chat-input" maxlength="200"
               placeholder="Press Enter to chat…"
-              style="width:${chatW - 12}px;padding:6px 10px;border-radius:6px;
-                     border:1px solid #334466;background:#0a0f1e;
-                     color:#ddeeff;font-size:12px;outline:none;" />`
+              style="width:${chatW - 16}px;padding:7px 12px;border-radius:8px;
+                     border:1px solid rgba(60,80,128,0.4);background:rgba(8,14,30,0.6);
+                     color:#ddeeff;font-size:12px;outline:none;
+                     font-family:'Segoe UI',sans-serif;
+                     transition:border-color 0.2s;"
+              onfocus="this.style.borderColor='rgba(100,140,255,0.5)'"
+              onblur="this.style.borderColor='rgba(60,80,128,0.4)'" />`
     ).setDepth(502);
 
     // Send on Enter
@@ -460,8 +584,13 @@ export class OfficeScene extends Phaser.Scene {
     });
 
     // ── Instructions ─────────────────────────────────────────────────────
-    this.add.text(width / 2, height - 18, 'Type or move mouse → character works  •  Chat in the box →', {
-      fontSize: '11px', fontFamily: 'Segoe UI, sans-serif', color: '#556677',
+    const instrBg = this.add.graphics();
+    instrBg.fillStyle(0x101828, 0.4);
+    instrBg.fillRoundedRect(width / 2 - 220, height - 30, 440, 22, 6);
+    instrBg.setDepth(500);
+
+    this.add.text(width / 2, height - 19, 'Type or move mouse → character works  •  Chat in the box →', {
+      fontSize: '11px', fontFamily: 'Segoe UI, sans-serif', color: '#4a5a7a',
     }).setOrigin(0.5).setDepth(501);
 
     // ── State label update ────────────────────────────────────────────────
@@ -472,7 +601,15 @@ export class OfficeScene extends Phaser.Scene {
         const elapsed = this.time.now - this._lastActivityTime;
         const isWorking = this._activityDetected && elapsed < ACTIVITY_TIMEOUT_MS;
         this._actLabel.setText(isWorking ? '💻 Working' : '😴 Idle');
-        this._actLabel.setColor(isWorking ? '#88FFAA' : '#CCCCCC');
+        this._actLabel.setColor(isWorking ? '#66EE99' : '#9AABCC');
+        // Animated status dot
+        this._actDot.clear();
+        this._actDot.fillStyle(isWorking ? 0x66EE99 : 0x9AABCC, 0.8);
+        this._actDot.fillCircle(162, 73, 4);
+        if (isWorking) {
+          this._actDot.fillStyle(0x66EE99, 0.2);
+          this._actDot.fillCircle(162, 73, 7);
+        }
       },
     });
   }
@@ -486,8 +623,9 @@ export class OfficeScene extends Phaser.Scene {
     const style = {
       fontSize: '11px',
       fontFamily: 'Segoe UI, sans-serif',
-      color: '#DDEEFF',
-      wordWrap: { width: 268 },
+      color: '#C0D0EE',
+      wordWrap: { width: 280 },
+      shadow: { offsetX: 0, offsetY: 1, color: '#00001122', blur: 2, fill: true },
     };
     const line = this.add.text(0, 0, text, style);
     this._chatLines.push(line);

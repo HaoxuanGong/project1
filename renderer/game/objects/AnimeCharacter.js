@@ -1,6 +1,8 @@
 /**
  * AnimeCharacter
  * A procedurally-drawn anime-style character rendered with Phaser Graphics.
+ * Production-quality rendering with expressive eyes, hair highlights,
+ * body outlines, and polished animations.
  * States:  'idle' | 'working' | 'walk'
  */
 export class AnimeCharacter {
@@ -34,28 +36,30 @@ export class AnimeCharacter {
     this.graphics = scene.add.graphics();
     this.container.add(this.graphics);
 
-    // Name tag
-    this.nameTag = scene.add.text(0, -56, name, {
+    // Name tag (polished)
+    this.nameTag = scene.add.text(0, -60, name, {
       fontSize: '11px',
       fontFamily: 'Segoe UI, sans-serif',
-      color: '#ffffff',
-      backgroundColor: '#00000088',
-      padding: { x: 4, y: 2 },
+      color: '#E8EEFF',
+      backgroundColor: '#1a2240cc',
+      padding: { x: 6, y: 3 },
       align: 'center',
+      shadow: { offsetX: 0, offsetY: 1, color: '#00001144', blur: 3, fill: true },
     }).setOrigin(0.5, 1);
     this.container.add(this.nameTag);
 
     // Speech bubble (hidden by default)
     this._speechText = '';
     this._speechTimer = 0;
-    this.speechBubble = scene.add.text(0, -72, '', {
+    this.speechBubble = scene.add.text(0, -78, '', {
       fontSize: '10px',
       fontFamily: 'Segoe UI, sans-serif',
-      color: '#222222',
-      backgroundColor: '#ffffffee',
-      padding: { x: 5, y: 3 },
+      color: '#1a2040',
+      backgroundColor: '#f0f4ffee',
+      padding: { x: 7, y: 4 },
       align: 'center',
-      wordWrap: { width: 120 },
+      wordWrap: { width: 130 },
+      shadow: { offsetX: 0, offsetY: 2, color: '#00002222', blur: 4, fill: true },
     }).setOrigin(0.5, 1).setVisible(false);
     this.container.add(this.speechBubble);
 
@@ -91,17 +95,17 @@ export class AnimeCharacter {
     this._tick += delta;
     this._blinkTimer += delta;
 
-    // Bob animation
+    // Smooth bob animation
     if (this.state === 'idle') {
-      this._bobOffset = Math.sin(this._tick / 800) * 2;
-      this._armAngle = Math.sin(this._tick / 1200) * 0.1;
+      this._bobOffset = Math.sin(this._tick / 900) * 1.8;
+      this._armAngle = Math.sin(this._tick / 1400) * 0.08;
     } else if (this.state === 'working') {
-      this._bobOffset = Math.sin(this._tick / 300) * 1;
+      this._bobOffset = Math.sin(this._tick / 350) * 0.8;
       this._typingFrame = Math.floor(this._tick / 120) % 4;
-      this._armAngle = (this._typingFrame < 2 ? 1 : -1) * 0.35;
+      this._armAngle = (this._typingFrame < 2 ? 1 : -1) * 0.3;
     } else if (this.state === 'walk') {
-      this._bobOffset = Math.abs(Math.sin(this._tick / 200)) * 3;
-      this._armAngle = Math.sin(this._tick / 200) * 0.5;
+      this._bobOffset = Math.abs(Math.sin(this._tick / 200)) * 2.5;
+      this._armAngle = Math.sin(this._tick / 200) * 0.45;
     }
 
     // Blinking every ~3 s
@@ -136,11 +140,19 @@ export class AnimeCharacter {
     return parseInt(hex.replace('#', ''), 16);
   }
 
-  _lighten(hex, amount = 0x222222) {
+  _lighten(hex, amount = 0x333333) {
     const n = this._hexToInt(hex);
     const r = Math.min(255, ((n >> 16) & 0xff) + ((amount >> 16) & 0xff));
     const g = Math.min(255, ((n >> 8) & 0xff) + ((amount >> 8) & 0xff));
     const b = Math.min(255, (n & 0xff) + (amount & 0xff));
+    return (r << 16) | (g << 8) | b;
+  }
+
+  _darken(hex, amount = 0x222222) {
+    const n = this._hexToInt(hex);
+    const r = Math.max(0, ((n >> 16) & 0xff) - ((amount >> 16) & 0xff));
+    const g = Math.max(0, ((n >> 8) & 0xff) - ((amount >> 8) & 0xff));
+    const b = Math.max(0, (n & 0xff) - (amount & 0xff));
     return (r << 16) | (g << 8) | b;
   }
 
@@ -150,136 +162,238 @@ export class AnimeCharacter {
 
     const bodyColor = this._hexToInt(this.color);
     const highlight = this._lighten(this.color);
-    const skin = 0xFFD9B3;
-    const skinDark = 0xEEC49A;
+    const shadow = this._darken(this.color);
+    const skin = 0xFFDDBB;
+    const skinDark = 0xEEBB99;
+    const skinHighlight = 0xFFEED8;
     const white = 0xFFFFFF;
     const black = 0x111111;
+    const outline = 0x222233;
 
     const bobY = this._bobOffset;
     const eyeOpen = this._blink === 0 || this._blink > 120;
 
-    // ── Shadow ──────────────────────────────────────────
-    g.fillStyle(0x000000, 0.15);
-    g.fillEllipse(0, 28, 28, 8);
+    // ── Shadow (soft elliptical) ────────────────────────
+    g.fillStyle(0x000000, 0.12);
+    g.fillEllipse(0, 30, 32, 9);
+    g.fillStyle(0x000000, 0.06);
+    g.fillEllipse(0, 30, 40, 12);
 
     // ── Legs ────────────────────────────────────────────
     const legSwing = this.state === 'walk' ? Math.sin(this._tick / 200) * 4 : 0;
     // Left leg
-    g.fillStyle(bodyColor, 1);
+    g.fillStyle(shadow, 1);
     g.fillRoundedRect(-10, 18 + bobY, 8, 14, 3);
+    g.fillStyle(bodyColor, 1);
+    g.fillRoundedRect(-10, 18 + bobY, 7, 13, 3);
     // Right leg
+    g.fillStyle(shadow, 1);
     g.fillRoundedRect(2, 18 + bobY + legSwing * 0.5, 8, 14, 3);
-    // Shoes
-    g.fillStyle(black, 1);
-    g.fillEllipse(-6, 32 + bobY, 10, 5);
-    g.fillEllipse(6, 32 + bobY + legSwing * 0.5, 10, 5);
+    g.fillStyle(bodyColor, 1);
+    g.fillRoundedRect(2, 18 + bobY + legSwing * 0.5, 7, 13, 3);
+    // Shoes (polished)
+    g.fillStyle(0x222233, 1);
+    g.fillEllipse(-6, 32 + bobY, 11, 5);
+    g.fillEllipse(6, 32 + bobY + legSwing * 0.5, 11, 5);
+    // Shoe highlight
+    g.fillStyle(0x444466, 0.5);
+    g.fillEllipse(-6, 31 + bobY, 7, 3);
+    g.fillEllipse(6, 31 + bobY + legSwing * 0.5, 7, 3);
 
     // ── Body ─────────────────────────────────────────────
+    // Body outline
+    g.fillStyle(outline, 0.3);
+    g.fillRoundedRect(-13, -1 + bobY, 26, 22, 6);
+    // Main body
     g.fillStyle(bodyColor, 1);
     g.fillRoundedRect(-12, 0 + bobY, 24, 20, 5);
-
-    // Body highlight
-    g.fillStyle(highlight, 0.4);
-    g.fillRoundedRect(-9, 2 + bobY, 8, 10, 3);
+    // Body highlight (top-left)
+    g.fillStyle(highlight, 0.35);
+    g.fillRoundedRect(-9, 2 + bobY, 9, 10, 3);
+    // Body shadow (bottom-right)
+    g.fillStyle(shadow, 0.2);
+    g.fillRoundedRect(2, 10 + bobY, 9, 8, 3);
+    // Collar detail
+    g.fillStyle(highlight, 0.25);
+    g.fillRoundedRect(-5, -1 + bobY, 10, 4, 2);
 
     // ── Arms ─────────────────────────────────────────────
     const aA = this._armAngle;
-    // Left arm
+    // Left arm (shadow + main)
+    g.fillStyle(shadow, 0.6);
+    g.fillRoundedRect(-21 + (aA * 8), 2 + bobY + Math.abs(aA) * 6, 11, 6, 3);
     g.fillStyle(bodyColor, 1);
     g.fillRoundedRect(-20 + (aA * 8), 2 + bobY + Math.abs(aA) * 6, 10, 5, 2);
-    // Right arm  
+    // Right arm
+    g.fillStyle(shadow, 0.6);
+    g.fillRoundedRect(10 - (aA * 8), 2 + bobY + Math.abs(aA) * 6, 11, 6, 3);
+    g.fillStyle(bodyColor, 1);
     g.fillRoundedRect(10 - (aA * 8), 2 + bobY + Math.abs(aA) * 6, 10, 5, 2);
 
     // Hands
     g.fillStyle(skin, 1);
     g.fillCircle(-20 + (aA * 8), 5 + bobY + Math.abs(aA) * 6, 4);
     g.fillCircle(24 - (aA * 8), 5 + bobY + Math.abs(aA) * 6, 4);
+    // Hand highlight
+    g.fillStyle(skinHighlight, 0.5);
+    g.fillCircle(-21 + (aA * 8), 4 + bobY + Math.abs(aA) * 6, 2);
+    g.fillCircle(23 - (aA * 8), 4 + bobY + Math.abs(aA) * 6, 2);
 
     // ── Neck ─────────────────────────────────────────────
-    g.fillStyle(skin, 1);
+    g.fillStyle(skinDark, 1);
     g.fillRoundedRect(-4, -6 + bobY, 8, 8, 2);
+    g.fillStyle(skin, 1);
+    g.fillRoundedRect(-3, -6 + bobY, 6, 7, 2);
 
     // ── Head ─────────────────────────────────────────────
+    // Head shadow
+    g.fillStyle(skinDark, 0.6);
+    g.fillCircle(1, -17 + bobY, 16);
+    // Main head
     g.fillStyle(skin, 1);
     g.fillCircle(0, -18 + bobY, 16);
+    // Face highlight
+    g.fillStyle(skinHighlight, 0.3);
+    g.fillCircle(-4, -22 + bobY, 8);
 
-    // Cheeks
-    g.fillStyle(0xFFAABB, 0.5);
-    g.fillCircle(-9, -14 + bobY, 5);
-    g.fillCircle(9, -14 + bobY, 5);
+    // Cheeks (rosy)
+    g.fillStyle(0xFFAABB, 0.4);
+    g.fillEllipse(-10, -13 + bobY, 6, 4);
+    g.fillEllipse(10, -13 + bobY, 6, 4);
 
     // ── Hair ─────────────────────────────────────────────
-    g.fillStyle(bodyColor, 1);
+    // Hair shadow layer
+    g.fillStyle(shadow, 0.7);
+    g.fillCircle(1, -23 + bobY, 15);
+    g.fillRect(-14, -27 + bobY, 30, 11);
     // Main hair
+    g.fillStyle(bodyColor, 1);
     g.fillCircle(0, -24 + bobY, 14);
     g.fillRect(-14, -28 + bobY, 28, 10);
     // Side bangs
     g.fillRoundedRect(-16, -22 + bobY, 6, 14, 3);
     g.fillRoundedRect(10, -22 + bobY, 6, 14, 3);
-    // Ahoge (cowlick)
+    // Ahoge (cowlick) with highlight
     g.fillRoundedRect(-2, -38 + bobY, 5, 12, 3);
+    g.fillStyle(highlight, 0.45);
+    g.fillRoundedRect(-1, -37 + bobY, 3, 8, 2);
+    // Hair highlight streaks
+    g.fillStyle(highlight, 0.3);
+    g.fillRoundedRect(-8, -30 + bobY, 4, 6, 2);
+    g.fillRoundedRect(5, -29 + bobY, 3, 5, 2);
+    // Hair front fringe detail
+    g.fillStyle(bodyColor, 1);
+    g.fillRoundedRect(-12, -26 + bobY, 8, 5, 2);
+    g.fillRoundedRect(4, -26 + bobY, 8, 5, 2);
 
-    // ── Eyes ─────────────────────────────────────────────
+    // ── Eyes (large, expressive anime eyes) ──────────────
     if (eyeOpen) {
-      // Whites
+      // Eye whites (larger)
       g.fillStyle(white, 1);
-      g.fillEllipse(-6, -18 + bobY, 7, 8);
-      g.fillEllipse(6, -18 + bobY, 7, 8);
-      // Iris
-      g.fillStyle(0x4488FF, 1);
-      g.fillCircle(-6, -17 + bobY, 3);
-      g.fillCircle(6, -17 + bobY, 3);
+      g.fillEllipse(-6, -17 + bobY, 9, 10);
+      g.fillEllipse(6, -17 + bobY, 9, 10);
+
+      // Iris (gradient effect via layering)
+      g.fillStyle(0x3366CC, 1);
+      g.fillCircle(-6, -16 + bobY, 4);
+      g.fillCircle(6, -16 + bobY, 4);
+      // Inner iris (lighter center)
+      g.fillStyle(0x5588EE, 1);
+      g.fillCircle(-6, -17 + bobY, 2.5);
+      g.fillCircle(6, -17 + bobY, 2.5);
       // Pupil
       g.fillStyle(black, 1);
-      g.fillCircle(-6, -17 + bobY, 1.5);
-      g.fillCircle(6, -17 + bobY, 1.5);
-      // Highlight
-      g.fillStyle(white, 1);
-      g.fillCircle(-5, -18 + bobY, 1);
-      g.fillCircle(7, -18 + bobY, 1);
-    } else {
-      // Closed eye lines
-      g.lineStyle(1.5, black, 1);
+      g.fillCircle(-6, -16 + bobY, 2);
+      g.fillCircle(6, -16 + bobY, 2);
+
+      // Large highlight (top-right)
+      g.fillStyle(white, 0.95);
+      g.fillCircle(-4, -19 + bobY, 1.8);
+      g.fillCircle(8, -19 + bobY, 1.8);
+      // Small highlight (bottom-left)
+      g.fillStyle(white, 0.6);
+      g.fillCircle(-7, -15 + bobY, 0.8);
+      g.fillCircle(5, -15 + bobY, 0.8);
+
+      // Upper eyelid line
+      g.lineStyle(1.2, outline, 0.5);
       g.beginPath();
-      g.moveTo(-9, -18 + bobY);
-      g.lineTo(-3, -17 + bobY);
+      g.arc(-6, -18 + bobY, 5, -2.8, -0.3, false);
       g.strokePath();
       g.beginPath();
-      g.moveTo(3, -17 + bobY);
-      g.lineTo(9, -18 + bobY);
+      g.arc(6, -18 + bobY, 5, -2.8, -0.3, false);
+      g.strokePath();
+
+      // Eyelashes (small marks on outer corner)
+      g.lineStyle(1, outline, 0.35);
+      g.beginPath(); g.moveTo(-11, -20 + bobY); g.lineTo(-12, -22 + bobY); g.strokePath();
+      g.beginPath(); g.moveTo(11, -20 + bobY); g.lineTo(12, -22 + bobY); g.strokePath();
+    } else {
+      // Closed eye (cute curved lines)
+      g.lineStyle(2, outline, 0.6);
+      g.beginPath();
+      g.arc(-6, -17 + bobY, 4, 0.2, Math.PI - 0.2, false);
+      g.strokePath();
+      g.beginPath();
+      g.arc(6, -17 + bobY, 4, 0.2, Math.PI - 0.2, false);
       g.strokePath();
     }
+
+    // ── Eyebrows ────────────────────────────────────────
+    g.lineStyle(1.5, shadow, 0.5);
+    g.beginPath();
+    g.moveTo(-9, -23 + bobY);
+    g.lineTo(-3, -24 + bobY);
+    g.strokePath();
+    g.beginPath();
+    g.moveTo(3, -24 + bobY);
+    g.lineTo(9, -23 + bobY);
+    g.strokePath();
+
+    // ── Nose (tiny) ─────────────────────────────────────
+    g.fillStyle(skinDark, 0.3);
+    g.fillCircle(0, -12 + bobY, 1);
 
     // ── Mouth ────────────────────────────────────────────
     if (this.state === 'working') {
-      // Focused expression
-      g.lineStyle(1.5, skinDark, 1);
+      // Focused expression (small straight line)
+      g.lineStyle(1.5, skinDark, 0.8);
       g.beginPath();
-      g.moveTo(-3, -10 + bobY);
-      g.lineTo(3, -10 + bobY);
+      g.moveTo(-2, -9 + bobY);
+      g.lineTo(2, -9 + bobY);
       g.strokePath();
     } else {
-      // Smile
-      g.lineStyle(1.5, skinDark, 1);
+      // Happy smile (wider arc)
+      g.lineStyle(1.5, skinDark, 0.8);
       g.beginPath();
-      g.arc(0, -11 + bobY, 3.5, 0.2, Math.PI - 0.2);
+      g.arc(0, -10 + bobY, 4, 0.3, Math.PI - 0.3);
       g.strokePath();
+      // Inner mouth highlight
+      g.fillStyle(0xFF8899, 0.3);
+      g.fillEllipse(0, -8.5 + bobY, 4, 2);
     }
 
-    // ── Working accessory: small keyboard when typing ─────
+    // ── Working accessory: detailed keyboard ─────────────
     if (this.state === 'working') {
       const kbY = 24 + bobY;
-      g.fillStyle(0xCCCCDD, 1);
-      g.fillRoundedRect(-14, kbY, 28, 10, 2);
+      // Keyboard base
+      g.fillStyle(0xBBBBCC, 1);
+      g.fillRoundedRect(-15, kbY, 30, 11, 2);
+      // Keyboard top highlight
+      g.fillStyle(0xDDDDEE, 0.6);
+      g.fillRoundedRect(-14, kbY + 1, 28, 4, 1);
+      // Key rows
       g.fillStyle(0x888899, 1);
-      for (let kx = -11; kx <= 10; kx += 5) {
+      for (let kx = -12; kx <= 11; kx += 5) {
         g.fillRoundedRect(kx, kbY + 2, 4, 3, 1);
-        if (Math.random() > 0.5) {
-          g.fillStyle(0x666677, 1);
-          g.fillRoundedRect(kx, kbY + 2, 4, 3, 1);
-          g.fillStyle(0x888899, 1);
-        }
       }
+      g.fillStyle(0x777788, 1);
+      for (let kx = -10; kx <= 9; kx += 5) {
+        g.fillRoundedRect(kx, kbY + 6, 4, 3, 1);
+      }
+      // Spacebar
+      g.fillStyle(0x999AAA, 1);
+      g.fillRoundedRect(-6, kbY + 6, 12, 3, 1);
     }
   }
 }
