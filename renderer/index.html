@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-eval'; connect-src http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline';" />
+  <title>Office Buddy</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- Phaser 3 -->
+  <script src="../node_modules/phaser/dist/phaser.min.js"></script>
+  <!-- Socket.IO client -->
+  <script src="../node_modules/socket.io-client/dist/socket.io.min.js"></script>
+  <!-- Game entry -->
+  <script type="module" src="game/main.js"></script>
+</body>
+</html>

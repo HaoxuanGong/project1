@@ -1,0 +1,60 @@
+{
+  "name": "office-buddy",
+  "version": "1.0.0",
+  "description": "2.5D isometric office desktop companion game with multiplayer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server.js",
+    "dev": "concurrently \"npm run server\" \"electron .\"",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist": "electron-builder --mac --win",
+    "test": "node tests/game.test.js"
+  },
+  "keywords": ["electron", "phaser", "game", "office", "multiplayer"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "electron": "^40.8.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "phaser": "^3.90.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  },
+  "build": {
+    "appId": "com.officeBuddy.app",
+    "productName": "Office Buddy",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "data/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "server.js",
+        "to": "server.js"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    }
+  }
+}
