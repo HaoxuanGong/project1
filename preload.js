@@ -6,4 +6,5 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getServerUrl: () => ipcRenderer.invoke('get-server-url'),
+  setWindowMode: (mode) => ipcRenderer.invoke('set-window-mode', mode),
 });

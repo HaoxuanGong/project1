@@ -17,6 +17,10 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const cx = width / 2;
 
+    if (window.electronAPI?.setWindowMode) {
+      window.electronAPI.setWindowMode('office').catch(() => {});
+    }
+
     // ── Background gradient (deep rich tones) ────────────────────────────────
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x0a0a1a, 0x0a0a1a, 0x141428, 0x0c1225, 1);
@@ -87,7 +91,7 @@ export class MenuScene extends Phaser.Scene {
     const panelW = 380;
     const panelX = cx - panelW / 2;
     const panelY = 156;
-    const panelH = 400;
+    const panelH = 458;
 
     const panel = this.add.graphics();
     // Outer glow
@@ -189,7 +193,15 @@ export class MenuScene extends Phaser.Scene {
 
     // ── Play button ──────────────────────────────────────────────────────────
     const btn = this._makeButton(cx, 452, '▶  Enter Office', '#2a4080', '#3a5ab0');
-    btn.on('pointerdown', () => this._onEnter());
+    btn.on('pointerdown', () => this._onEnter('office'));
+
+    const companionBtn = this._makeButton(cx, 514, '☕  Desktop Buddy Mode', '#355f7d', '#4a7ea8');
+    companionBtn.on('pointerdown', () => this._onEnter('companion'));
+
+    this.add.text(cx, 548, 'Launch a focused bottom-right desk companion with the rest of the office hidden.', {
+      fontSize: '11px', fontFamily: 'Segoe UI, sans-serif', color: '#6f84ae', align: 'center',
+      wordWrap: { width: 300 },
+    }).setOrigin(0.5).setDepth(6);
 
     // ── Footer ───────────────────────────────────────────────────────────────
     const footerLine = this.add.graphics();
@@ -262,7 +274,7 @@ export class MenuScene extends Phaser.Scene {
     return btnBg;
   }
 
-  async _onEnter() {
+  async _onEnter(displayMode = 'office') {
     const nameEl = document.getElementById('player-name');
     const codeEl = document.getElementById('room-code');
     const name = (nameEl ? nameEl.value.trim() : '') || 'Player';
@@ -280,6 +292,7 @@ export class MenuScene extends Phaser.Scene {
         playerName: name,
         avatarColor: this._selectedColor,
         roomCode: code,
+        displayMode,
       });
     } catch (err) {
       this._statusText.setText('Could not connect to server. Is it running?');

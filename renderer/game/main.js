@@ -4,8 +4,11 @@
 import { MenuScene } from './scenes/MenuScene.js';
 import { OfficeScene } from './scenes/OfficeScene.js';
 
+const params = new URLSearchParams(window.location.search);
+const rendererType = params.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO;
+
 const config = {
-  type: Phaser.AUTO,
+  type: rendererType,
   parent: 'game-container',
   backgroundColor: '#0f0f1e',
   scale: {
