@@ -14,6 +14,7 @@
 import { IsoHelper } from '../objects/IsoHelper.js';
 import { AnimeCharacter } from '../objects/AnimeCharacter.js';
 import { FurnitureManager } from '../objects/FurnitureManager.js';
+import { getCompanionLayout } from '../utils/companionLayout.mjs';
 
 // Inactivity threshold before character returns to 'idle'
 const ACTIVITY_TIMEOUT_MS = 2000;
@@ -30,6 +31,8 @@ export class OfficeScene extends Phaser.Scene {
     this._playerName = data.playerName || 'Player';
     this._avatarColor = data.avatarColor || '#E88888';
     this._roomCode = data.roomCode || '';
+    this._displayMode = data.displayMode || 'office';
+    this._companionMode = this._displayMode === 'companion';
   }
 
   preload() {
@@ -49,26 +52,42 @@ export class OfficeScene extends Phaser.Scene {
     const originX = width / 2;
     const originY = 120;
     this._iso = new IsoHelper(tileW, tileH, originX, originY);
+    this._companionLayout = getCompanionLayout(width, height);
 
     // ── Draw room ────────────────────────────────────────────────────────────
     this._roomGraphics = this.add.graphics();
-    this._drawRoom();
+    if (this._companionMode) {
+      this._companionBackGraphics = this.add.graphics().setDepth(130);
+      this._companionFrontGraphics = this.add.graphics().setDepth(260);
+      this._drawCompanionView(0);
+    } else {
+      this._drawRoom();
+    }
 
     // ── Furniture ────────────────────────────────────────────────────────────
-    const furnitureDefs = this.cache.json.get('furniture') || [];
-    this._furniture = new FurnitureManager(this, this._iso, furnitureDefs);
+    if (!this._companionMode) {
+      const furnitureDefs = this.cache.json.get('furniture') || [];
+      this._furniture = new FurnitureManager(this, this._iso, furnitureDefs);
+    }
 
     // ── Local player character ────────────────────────────────────────────────
-    const playerStart = this._iso.toScreen(3, 3, 0);
+    const playerStart = this._companionMode
+      ? this._companionLayout.character
+      : this._iso.toScreen(3, 3, 0);
     this._localChar = new AnimeCharacter(
       this, playerStart.x, playerStart.y,
-      this._avatarColor, this._playerName, true
+      this._avatarColor, this._playerName, true,
+      this._companionMode ? {
+        scale: playerStart.scale,
+        hideName: true,
+        deskPose: true,
+      } : {}
     );
-    this._localChar.container.setDepth(200);
+    this._localChar.container.setDepth(this._companionMode ? 220 : 200);
 
     // ── Activity tracking ────────────────────────────────────────────────────
-    this._lastActivityTime = 0;
-    this._activityDetected = false;
+    this._lastActivityTime = this.time.now;
+    this._activityDetected = this._companionMode;
     this._setupActivityListeners();
 
     // ── Remote players ───────────────────────────────────────────────────────
@@ -79,7 +98,11 @@ export class OfficeScene extends Phaser.Scene {
     this._myRoomCode = '';
     this._myPlayerId = '';
     this._syncTimer = 0;
-    this._connectToServer();
+    if (!this._companionMode) {
+      this._connectToServer();
+    } else if (window.electronAPI?.setWindowMode) {
+      window.electronAPI.setWindowMode('companion').catch(() => {});
+    }
 
     // ── UI Overlay ───────────────────────────────────────────────────────────
     this._buildUI();
@@ -91,12 +114,15 @@ export class OfficeScene extends Phaser.Scene {
   update(time, delta) {
     // Update local character state
     const elapsed = time - this._lastActivityTime;
-    if (this._activityDetected && elapsed < ACTIVITY_TIMEOUT_MS) {
-      this._localChar.setState('working');
-    } else {
-      this._localChar.setState('idle');
-    }
+    const isWorking = this._companionMode
+      ? elapsed < ACTIVITY_TIMEOUT_MS || Math.sin(time / 900) > -0.35
+      : (this._activityDetected && elapsed < ACTIVITY_TIMEOUT_MS);
+    this._localChar.setState(isWorking ? 'working' : 'idle');
     this._localChar.update(delta);
+
+    if (this._companionMode) {
+      this._drawCompanionView(time);
+    }
 
     // Update remote characters
     for (const [, rp] of this._remotePlayers) {
@@ -116,6 +142,78 @@ export class OfficeScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  _drawCompanionView(time = 0) {
+    if (!this._companionBackGraphics || !this._companionFrontGraphics) return;
+
+    const back = this._companionBackGraphics;
+    const front = this._companionFrontGraphics;
+    const layout = this._companionLayout;
+    const pulse = 0.55 + (Math.sin(time / 500) * 0.5 + 0.5) * 0.45;
+    const steamDrift = Math.sin(time / 1100) * 5;
+
+    back.clear();
+    front.clear();
+
+    back.fillStyle(0x12203A, 0.55);
+    back.fillRoundedRect(8, 8, this.scale.width - 16, this.scale.height - 16, 24);
+    back.fillStyle(0x6FA6FF, 0.08);
+    back.fillEllipse(layout.monitor.x - 18, layout.monitor.y + 40, 190, 130);
+    back.fillStyle(0xFFD889, 0.08 + pulse * 0.04);
+    back.fillEllipse(layout.lamp.x + 18, layout.desk.y + 18, 140, 90);
+    back.fillStyle(0x000000, 0.18);
+    back.fillEllipse(layout.desk.x + layout.desk.width * 0.48, layout.desk.y + layout.desk.height + 14, layout.desk.width * 1.05, 34);
+
+    // Monitor
+    back.fillStyle(0x0D1322, 0.95);
+    back.fillRoundedRect(layout.monitor.x, layout.monitor.y, layout.monitor.width, layout.monitor.height, 8);
+    back.fillStyle(0x89C2FF, 0.16 + pulse * 0.12);
+    back.fillRoundedRect(layout.monitor.x + 5, layout.monitor.y + 5, layout.monitor.width - 10, layout.monitor.height - 10, 6);
+    back.fillStyle(0xBFE3FF, 0.12 + pulse * 0.08);
+    back.fillRect(layout.monitor.x + 12, layout.monitor.y + 12, layout.monitor.width - 24, 6);
+    back.fillRect(layout.monitor.x + 12, layout.monitor.y + 24, layout.monitor.width - 32, 4);
+    back.fillRect(layout.monitor.x + 12, layout.monitor.y + 34, layout.monitor.width - 20, 4);
+    back.fillStyle(0x2E3E58, 0.95);
+    back.fillRoundedRect(layout.monitor.x + layout.monitor.width / 2 - 5, layout.monitor.y + layout.monitor.height - 2, 10, 18, 4);
+    back.fillRoundedRect(layout.monitor.x + layout.monitor.width / 2 - 26, layout.monitor.y + layout.monitor.height + 14, 52, 6, 3);
+
+    // Lamp
+    back.lineStyle(4, 0xA4B7D5, 0.9);
+    back.beginPath();
+    back.moveTo(layout.lamp.x, layout.desk.y + layout.desk.height * 0.35);
+    back.lineTo(layout.lamp.x + 14, layout.desk.y - 4);
+    back.lineTo(layout.lamp.x + 34, layout.desk.y + 6);
+    back.strokePath();
+    back.fillStyle(0xF1D59C, 0.95);
+    back.fillRoundedRect(layout.lamp.x + 18, layout.desk.y - 2, 28, 16, 6);
+
+    // Desk top
+    back.fillStyle(0x6E4C34, 0.95);
+    back.fillRoundedRect(layout.desk.x, layout.desk.y, layout.desk.width, layout.desk.height * 0.54, 12);
+    back.fillStyle(0xA87750, 0.25);
+    back.fillRoundedRect(layout.desk.x + 8, layout.desk.y + 6, layout.desk.width - 16, 10, 8);
+
+    // Mug + steam
+    back.fillStyle(0xF6F8FF, 0.92);
+    back.fillRoundedRect(layout.mug.x, layout.mug.y, 18, 14, 4);
+    back.lineStyle(2, 0xF6F8FF, 0.8);
+    back.beginPath();
+    back.arc(layout.mug.x + 18, layout.mug.y + 7, 4, -1.2, 1.2, false);
+    back.strokePath();
+    back.fillStyle(0xFFFFFF, 0.12);
+    back.fillEllipse(layout.mug.x + 5 + steamDrift * 0.18, layout.mug.y - 10, 8, 12);
+    back.fillEllipse(layout.mug.x + 4 - steamDrift * 0.12, layout.mug.y - 22, 7, 10);
+    back.fillEllipse(layout.mug.x + 12 - steamDrift * 0.16, layout.mug.y - 8, 8, 12);
+    back.fillEllipse(layout.mug.x + 13 + steamDrift * 0.1, layout.mug.y - 20, 7, 10);
+
+    // Desk front / foreground occlusion
+    front.fillStyle(0x4F341F, 0.97);
+    front.fillRoundedRect(layout.desk.x - 2, layout.desk.y + layout.desk.height * 0.28, layout.desk.width + 4, layout.desk.frontHeight, 10);
+    front.fillStyle(0x000000, 0.08);
+    front.fillRoundedRect(layout.desk.x + 12, layout.desk.y + layout.desk.height * 0.35, layout.desk.width - 24, 10, 6);
+    front.fillStyle(0xC7D3EA, 0.12 + pulse * 0.06);
+    front.fillRoundedRect(layout.desk.x + 10, layout.desk.y + layout.desk.height * 0.3, layout.desk.width * 0.42, 3, 2);
   }
 
   // ─── Room drawing ─────────────────────────────────────────────────────────
@@ -467,6 +565,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   _spawnRemotePlayer(player) {
+    if (this._companionMode) return;
     if (this._remotePlayers.has(player.id)) return;
     const pos = this._iso.toScreen(player.x || 4, player.y || 3, 0);
     const rChar = new AnimeCharacter(
@@ -480,6 +579,7 @@ export class OfficeScene extends Phaser.Scene {
   // ─── UI ──────────────────────────────────────────────────────────────────
 
   _buildUI() {
+    if (this._companionMode) return;
     const { width, height } = this.scale;
 
     // ── Room info bar (frosted glass) ─────────────────────────────────────
@@ -647,7 +747,14 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   _onResize(gameSize) {
-    // Redraw room on window resize
+    this._companionLayout = getCompanionLayout(gameSize.width, gameSize.height);
+    if (this._companionMode) {
+      this._drawCompanionView(this.time.now);
+      if (this._localChar) {
+        this._localChar.setPosition(this._companionLayout.character.x, this._companionLayout.character.y);
+      }
+      return;
+    }
     this._drawRoom();
   }
 

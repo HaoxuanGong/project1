@@ -9,6 +9,10 @@
 
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
+const { pathToFileURL } = require('url');
+
 let passed = 0;
 let failed = 0;
 
@@ -94,88 +98,113 @@ const iso = new IsoHelper(64, 32, 400, 100);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-console.log('\n── Server room management tests ────────────────────────────');
+console.log('\n── Companion layout tests ──────────────────────────────────');
 
-// Minimal mock for http.createServer so server.js can be required
-const http = require('http');
-const origListen = http.Server.prototype.listen;
-http.Server.prototype.listen = function (port, host, cb) {
-  // Don't actually bind a port in tests
-  if (typeof cb === 'function') setImmediate(cb);
-  return this;
-};
+(async () => {
+  const layoutModule = await import(pathToFileURL(
+    path.join(__dirname, '..', 'renderer', 'game', 'utils', 'companionLayout.mjs')
+  ).href);
+  const { getCompanionLayout } = layoutModule;
 
-let serverModule;
-try {
-  serverModule = require('../server.js');
-} catch (e) {
-  console.warn('Could not load server.js (socket.io may not be installed yet):', e.message);
-}
-
-if (serverModule) {
-  const { rooms } = serverModule;
-
-  // Simulate room creation helpers
-  const crypto = require('crypto');
-  function genCode() {
-    return crypto.randomBytes(3).toString('hex').toUpperCase();
+  {
+    const layout = getCompanionLayout(420, 320);
+    assert(layout.desk.x + layout.desk.width <= 420, 'companion desk fits inside width');
+    assert(layout.desk.y + layout.desk.height <= 320, 'companion desk fits inside height');
+    assert(layout.character.x > layout.desk.x, 'character anchor sits near the desk');
+    assert(layout.character.y < layout.desk.y + layout.desk.height, 'character anchor stays above the desk front');
   }
 
   {
-    // Room codes are 6 hex chars uppercase
-    const code = genCode();
-    assert(code.length === 6, 'Room code length is 6');
-    assert(code === code.toUpperCase(), 'Room code is uppercase');
-    assert(/^[0-9A-F]+$/.test(code), 'Room code is hexadecimal');
+    const small = getCompanionLayout(320, 240);
+    const large = getCompanionLayout(800, 600);
+    assert(large.desk.width > small.desk.width, 'desk scales up on larger windows');
+    assert(large.character.scale >= small.character.scale, 'character scale does not shrink on larger windows');
   }
 
-  {
-    // Rooms map starts empty (or has been populated by socket events – we just
-    // check the type is a Map)
-    assert(rooms instanceof Map, 'rooms is a Map');
-  }
-}
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log('\n── Server room management tests ────────────────────────────');
 
-http.Server.prototype.listen = origListen;
+  // Minimal mock for http.createServer so server.js can be required
+  const http = require('http');
+  const origListen = http.Server.prototype.listen;
+  http.Server.prototype.listen = function (port, host, cb) {
+    // Don't actually bind a port in tests
+    if (typeof cb === 'function') setImmediate(cb);
+    return this;
+  };
 
-// ─────────────────────────────────────────────────────────────────────────────
-console.log('\n── Furniture JSON tests ─────────────────────────────────────');
-
-const path = require('path');
-const fs = require('fs');
-
-{
-  const furniturePath = path.join(__dirname, '..', 'data', 'furniture.json');
-  assert(fs.existsSync(furniturePath), 'data/furniture.json exists');
-
-  let defs;
+  let serverModule;
   try {
-    defs = JSON.parse(fs.readFileSync(furniturePath, 'utf8'));
-    assert(Array.isArray(defs), 'furniture.json is an array');
-    assert(defs.length > 0, 'furniture.json has at least one item');
+    serverModule = require('../server.js');
   } catch (e) {
-    assert(false, `furniture.json is valid JSON: ${e.message}`);
-    defs = [];
+    console.warn('Could not load server.js (socket.io may not be installed yet):', e.message);
   }
 
-  const requiredFields = ['id', 'type', 'isoX', 'isoY', 'color'];
-  for (const def of defs) {
-    for (const field of requiredFields) {
-      assert(field in def, `furniture item "${def.id || '?'}" has field "${field}"`);
+  if (serverModule) {
+    const { rooms } = serverModule;
+
+    // Simulate room creation helpers
+    const crypto = require('crypto');
+    function genCode() {
+      return crypto.randomBytes(3).toString('hex').toUpperCase();
+    }
+
+    {
+      // Room codes are 6 hex chars uppercase
+      const code = genCode();
+      assert(code.length === 6, 'Room code length is 6');
+      assert(code === code.toUpperCase(), 'Room code is uppercase');
+      assert(/^[0-9A-F]+$/.test(code), 'Room code is hexadecimal');
+    }
+
+    {
+      // Rooms map starts empty (or has been populated by socket events – we just
+      // check the type is a Map)
+      assert(rooms instanceof Map, 'rooms is a Map');
     }
   }
 
-  // Check for duplicate ids
-  const ids = defs.map(d => d.id);
-  const uniqueIds = new Set(ids);
-  assert(ids.length === uniqueIds.size, 'All furniture ids are unique');
-}
+  http.Server.prototype.listen = origListen;
 
-// ─────────────────────────────────────────────────────────────────────────────
-console.log(`\n${'─'.repeat(54)}`);
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) {
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log('\n── Furniture JSON tests ─────────────────────────────────────');
+
+  {
+    const furniturePath = path.join(__dirname, '..', 'data', 'furniture.json');
+    assert(fs.existsSync(furniturePath), 'data/furniture.json exists');
+
+    let defs;
+    try {
+      defs = JSON.parse(fs.readFileSync(furniturePath, 'utf8'));
+      assert(Array.isArray(defs), 'furniture.json is an array');
+      assert(defs.length > 0, 'furniture.json has at least one item');
+    } catch (e) {
+      assert(false, `furniture.json is valid JSON: ${e.message}`);
+      defs = [];
+    }
+
+    const requiredFields = ['id', 'type', 'isoX', 'isoY', 'color'];
+    for (const def of defs) {
+      for (const field of requiredFields) {
+        assert(field in def, `furniture item "${def.id || '?'}" has field "${field}"`);
+      }
+    }
+
+    // Check for duplicate ids
+    const ids = defs.map(d => d.id);
+    const uniqueIds = new Set(ids);
+    assert(ids.length === uniqueIds.size, 'All furniture ids are unique');
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log(`\n${'─'.repeat(54)}`);
+  console.log(`Results: ${passed} passed, ${failed} failed`);
+  if (failed > 0) {
+    process.exit(1);
+  } else {
+    console.log('All tests passed ✓\n');
+  }
+})().catch((err) => {
+  console.error(err);
   process.exit(1);
-} else {
-  console.log('All tests passed ✓\n');
-}
+});

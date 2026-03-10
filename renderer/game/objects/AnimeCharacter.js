@@ -13,8 +13,9 @@ export class AnimeCharacter {
    * @param {string} color    Hex body/hair colour  (e.g. '#e88')
    * @param {string} name     Display name
    * @param {boolean} isLocal Whether this is the local player's character
+   * @param {object} options Rendering options
    */
-  constructor(scene, x, y, color = '#e88', name = 'You', isLocal = true) {
+  constructor(scene, x, y, color = '#e88', name = 'You', isLocal = true, options = {}) {
     this.scene = scene;
     this.x = x;
     this.y = y;
@@ -30,9 +31,14 @@ export class AnimeCharacter {
     this._armAngle = 0;
     this._blink = 0;
     this._blinkTimer = 0;
+    this._hairSway = 0;
+    this._gazeX = 0;
+    this._gazeY = 0;
+    this._deskPose = Boolean(options.deskPose);
 
     // Containers
     this.container = scene.add.container(x, y);
+    this.container.setScale(options.scale || 1);
     this.graphics = scene.add.graphics();
     this.container.add(this.graphics);
 
@@ -46,6 +52,7 @@ export class AnimeCharacter {
       align: 'center',
       shadow: { offsetX: 0, offsetY: 1, color: '#00001144', blur: 3, fill: true },
     }).setOrigin(0.5, 1);
+    this.nameTag.setVisible(options.hideName !== true);
     this.container.add(this.nameTag);
 
     // Speech bubble (hidden by default)
@@ -99,13 +106,22 @@ export class AnimeCharacter {
     if (this.state === 'idle') {
       this._bobOffset = Math.sin(this._tick / 900) * 1.8;
       this._armAngle = Math.sin(this._tick / 1400) * 0.08;
+      this._hairSway = Math.sin(this._tick / 1100) * 0.9;
+      this._gazeX = Math.sin(this._tick / 1700) * 0.7;
+      this._gazeY = Math.cos(this._tick / 2100) * 0.35;
     } else if (this.state === 'working') {
       this._bobOffset = Math.sin(this._tick / 350) * 0.8;
       this._typingFrame = Math.floor(this._tick / 120) % 4;
       this._armAngle = (this._typingFrame < 2 ? 1 : -1) * 0.3;
+      this._hairSway = Math.sin(this._tick / 420) * 0.7;
+      this._gazeX = this._typingFrame < 2 ? 0.5 : -0.35;
+      this._gazeY = 0.75;
     } else if (this.state === 'walk') {
       this._bobOffset = Math.abs(Math.sin(this._tick / 200)) * 2.5;
       this._armAngle = Math.sin(this._tick / 200) * 0.45;
+      this._hairSway = Math.sin(this._tick / 260) * 1.2;
+      this._gazeX = Math.sin(this._tick / 220) * 0.65;
+      this._gazeY = 0.2;
     }
 
     // Blinking every ~3 s
@@ -175,30 +191,32 @@ export class AnimeCharacter {
 
     // ── Shadow (soft elliptical) ────────────────────────
     g.fillStyle(0x000000, 0.12);
-    g.fillEllipse(0, 30, 32, 9);
+    g.fillEllipse(0, this._deskPose ? 27 : 30, this._deskPose ? 26 : 32, this._deskPose ? 7 : 9);
     g.fillStyle(0x000000, 0.06);
-    g.fillEllipse(0, 30, 40, 12);
+    g.fillEllipse(0, this._deskPose ? 27 : 30, this._deskPose ? 34 : 40, this._deskPose ? 10 : 12);
 
     // ── Legs ────────────────────────────────────────────
     const legSwing = this.state === 'walk' ? Math.sin(this._tick / 200) * 4 : 0;
+    const legHeight = this._deskPose ? 10 : 14;
+    const legY = this._deskPose ? 20 : 18;
     // Left leg
     g.fillStyle(shadow, 1);
-    g.fillRoundedRect(-10, 18 + bobY, 8, 14, 3);
+    g.fillRoundedRect(-10, legY + bobY, 8, legHeight, 3);
     g.fillStyle(bodyColor, 1);
-    g.fillRoundedRect(-10, 18 + bobY, 7, 13, 3);
+    g.fillRoundedRect(-10, legY + bobY, 7, legHeight - 1, 3);
     // Right leg
     g.fillStyle(shadow, 1);
-    g.fillRoundedRect(2, 18 + bobY + legSwing * 0.5, 8, 14, 3);
+    g.fillRoundedRect(2, legY + bobY + legSwing * 0.5, 8, legHeight, 3);
     g.fillStyle(bodyColor, 1);
-    g.fillRoundedRect(2, 18 + bobY + legSwing * 0.5, 7, 13, 3);
+    g.fillRoundedRect(2, legY + bobY + legSwing * 0.5, 7, legHeight - 1, 3);
     // Shoes (polished)
     g.fillStyle(0x222233, 1);
-    g.fillEllipse(-6, 32 + bobY, 11, 5);
-    g.fillEllipse(6, 32 + bobY + legSwing * 0.5, 11, 5);
+    g.fillEllipse(-6, legY + legHeight + 4 + bobY, 11, 5);
+    g.fillEllipse(6, legY + legHeight + 4 + bobY + legSwing * 0.5, 11, 5);
     // Shoe highlight
     g.fillStyle(0x444466, 0.5);
-    g.fillEllipse(-6, 31 + bobY, 7, 3);
-    g.fillEllipse(6, 31 + bobY + legSwing * 0.5, 7, 3);
+    g.fillEllipse(-6, legY + legHeight + 3 + bobY, 7, 3);
+    g.fillEllipse(6, legY + legHeight + 3 + bobY + legSwing * 0.5, 7, 3);
 
     // ── Body ─────────────────────────────────────────────
     // Body outline
@@ -221,23 +239,23 @@ export class AnimeCharacter {
     const aA = this._armAngle;
     // Left arm (shadow + main)
     g.fillStyle(shadow, 0.6);
-    g.fillRoundedRect(-21 + (aA * 8), 2 + bobY + Math.abs(aA) * 6, 11, 6, 3);
+    g.fillRoundedRect(-21 + (aA * 8), (this._deskPose ? 5 : 2) + bobY + Math.abs(aA) * 6, 11, 6, 3);
     g.fillStyle(bodyColor, 1);
-    g.fillRoundedRect(-20 + (aA * 8), 2 + bobY + Math.abs(aA) * 6, 10, 5, 2);
+    g.fillRoundedRect(-20 + (aA * 8), (this._deskPose ? 5 : 2) + bobY + Math.abs(aA) * 6, 10, 5, 2);
     // Right arm
     g.fillStyle(shadow, 0.6);
-    g.fillRoundedRect(10 - (aA * 8), 2 + bobY + Math.abs(aA) * 6, 11, 6, 3);
+    g.fillRoundedRect(10 - (aA * 8), (this._deskPose ? 5 : 2) + bobY + Math.abs(aA) * 6, 11, 6, 3);
     g.fillStyle(bodyColor, 1);
-    g.fillRoundedRect(10 - (aA * 8), 2 + bobY + Math.abs(aA) * 6, 10, 5, 2);
+    g.fillRoundedRect(10 - (aA * 8), (this._deskPose ? 5 : 2) + bobY + Math.abs(aA) * 6, 10, 5, 2);
 
     // Hands
     g.fillStyle(skin, 1);
-    g.fillCircle(-20 + (aA * 8), 5 + bobY + Math.abs(aA) * 6, 4);
-    g.fillCircle(24 - (aA * 8), 5 + bobY + Math.abs(aA) * 6, 4);
+    g.fillCircle(-20 + (aA * 8), (this._deskPose ? 8 : 5) + bobY + Math.abs(aA) * 6, 4);
+    g.fillCircle(24 - (aA * 8), (this._deskPose ? 8 : 5) + bobY + Math.abs(aA) * 6, 4);
     // Hand highlight
     g.fillStyle(skinHighlight, 0.5);
-    g.fillCircle(-21 + (aA * 8), 4 + bobY + Math.abs(aA) * 6, 2);
-    g.fillCircle(23 - (aA * 8), 4 + bobY + Math.abs(aA) * 6, 2);
+    g.fillCircle(-21 + (aA * 8), (this._deskPose ? 7 : 4) + bobY + Math.abs(aA) * 6, 2);
+    g.fillCircle(23 - (aA * 8), (this._deskPose ? 7 : 4) + bobY + Math.abs(aA) * 6, 2);
 
     // ── Neck ─────────────────────────────────────────────
     g.fillStyle(skinDark, 1);
@@ -274,13 +292,13 @@ export class AnimeCharacter {
     g.fillRoundedRect(-16, -22 + bobY, 6, 14, 3);
     g.fillRoundedRect(10, -22 + bobY, 6, 14, 3);
     // Ahoge (cowlick) with highlight
-    g.fillRoundedRect(-2, -38 + bobY, 5, 12, 3);
+    g.fillRoundedRect(-2 + this._hairSway * 0.4, -38 + bobY, 5, 12, 3);
     g.fillStyle(highlight, 0.45);
-    g.fillRoundedRect(-1, -37 + bobY, 3, 8, 2);
+    g.fillRoundedRect(-1 + this._hairSway * 0.4, -37 + bobY, 3, 8, 2);
     // Hair highlight streaks
     g.fillStyle(highlight, 0.3);
-    g.fillRoundedRect(-8, -30 + bobY, 4, 6, 2);
-    g.fillRoundedRect(5, -29 + bobY, 3, 5, 2);
+    g.fillRoundedRect(-8 + this._hairSway * 0.25, -30 + bobY, 4, 6, 2);
+    g.fillRoundedRect(5 + this._hairSway * 0.2, -29 + bobY, 3, 5, 2);
     // Hair front fringe detail
     g.fillStyle(bodyColor, 1);
     g.fillRoundedRect(-12, -26 + bobY, 8, 5, 2);
@@ -303,8 +321,8 @@ export class AnimeCharacter {
       g.fillCircle(6, -17 + bobY, 2.5);
       // Pupil
       g.fillStyle(black, 1);
-      g.fillCircle(-6, -16 + bobY, 2);
-      g.fillCircle(6, -16 + bobY, 2);
+      g.fillCircle(-6 + this._gazeX, -16 + bobY + this._gazeY, 2);
+      g.fillCircle(6 + this._gazeX, -16 + bobY + this._gazeY, 2);
 
       // Large highlight (top-right)
       g.fillStyle(white, 0.95);
